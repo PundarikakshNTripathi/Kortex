@@ -19,7 +19,7 @@ type VectorStore interface {
 
 // Browser defines the interface for browser interactions.
 type Browser interface {
-	Maps(url string) error
+	Navigate(url string) error
 	GetSnapshot() (string, error)
-	Highlight(selector string) error
+	Highlight(selector, message string) error
 }
