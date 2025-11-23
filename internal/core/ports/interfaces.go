@@ -22,4 +22,6 @@ type Browser interface {
 	Navigate(url string) error
 	GetSnapshot() (string, error)
 	Highlight(selector, message string) error
+	Click(selector string) error
+	Type(selector, text string) error
 }
