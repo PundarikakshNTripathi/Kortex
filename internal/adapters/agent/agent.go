@@ -32,7 +32,7 @@ func NewAgent(browser ports.Browser, vectorStore ports.VectorStore, apiKey strin
 		browser:     browser,
 		vectorStore: vectorStore,
 		apiKey:      apiKey,
-		modelName:   "gemini-2.0-flash-exp", // Using a capable model
+		modelName:   "gemini-3-pro-preview", // Using Gemini 3 Pro
 	}
 }
 
