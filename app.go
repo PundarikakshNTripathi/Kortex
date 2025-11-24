@@ -46,7 +46,7 @@ func (a *App) startup(ctx context.Context) {
 	// Initialize Browser
 	a.emitLog("INIT", "Initializing Playwright browser...")
 	browserInstance := browser.NewPlaywrightBrowser()
-	if err := browserInstance.Init(); err != nil {
+	if err := browserInstance.Init(false); err != nil { // Desktop app uses visible browser
 		a.emitLog("ERROR", fmt.Sprintf("Failed to initialize browser: %v", err))
 		return
 	}

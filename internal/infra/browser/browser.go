@@ -17,7 +17,7 @@ func NewPlaywrightBrowser() *PlaywrightBrowser {
 	return &PlaywrightBrowser{}
 }
 
-func (pb *PlaywrightBrowser) Init() error {
+func (pb *PlaywrightBrowser) Init(headless bool) error {
 	pw, err := playwright.Run()
 	if err != nil {
 		return fmt.Errorf("could not start playwright: %v", err)
@@ -25,7 +25,7 @@ func (pb *PlaywrightBrowser) Init() error {
 	pb.pw = pw
 
 	browser, err := pw.Chromium.Launch(playwright.BrowserTypeLaunchOptions{
-		Headless: playwright.Bool(false),
+		Headless: playwright.Bool(headless),
 	})
 	if err != nil {
 		return fmt.Errorf("could not launch browser: %v", err)

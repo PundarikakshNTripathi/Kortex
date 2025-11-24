@@ -32,6 +32,8 @@ The modern web is complex. Automating it requires more than just scripts; it req
 *   **Memory**: Remembers context and past interactions using vector search.
 *   **Structured Reasoning**: Uses Google's ADK to manage agent state, tools, and execution flow.
 
+```
+
 ## 🏗️ Architecture
 
 Kortex follows the **Hexagonal Architecture (Ports & Adapters)** pattern. This ensures that our core logic (the "Brain") is isolated from external tools (the "Hands" and "Eyes"), making the system modular, testable, and easily extensible.
@@ -41,6 +43,11 @@ graph TD
     subgraph Desktop ["Desktop App (Wails v2)"]
         UI["React Frontend"]
         Bridge["Go Bridge"]
+    end
+    
+    subgraph Web ["Web Server (Fiber)"]
+        WebSocket["WebSocket /ws/chat"]
+        HTTP["HTTP Server"]
     end
     
     subgraph Infrastructure ["Infrastructure (Adapters)"]
@@ -57,6 +64,8 @@ graph TD
 
     UI <-->|Events| Bridge
     Bridge --> Agent
+    WebSocket <-->|JSON| HTTP
+    HTTP --> Agent
     SQLite -->|Implements| Ports
     Playwright -->|Implements| Ports
     Logger -->|Implements| Ports
@@ -81,6 +90,9 @@ graph TD
 Kortex/
 ├── app.go                  # Wails App bridge (Go ↔ React)
 ├── main.go                 # Wails application entry point
+├── cmd/
+│   └── web/
+│       └── main.go         # Web server entry point (Fiber + WebSocket)
 ├── frontend/               # React TypeScript frontend
 │   ├── src/
 │   │   ├── App.tsx         # Main component (dual-pane layout)
@@ -100,6 +112,8 @@ Kortex/
 │       ├── logger/         # Structured logging
 │       └── sqlite/         # SQLite VectorStore
 ├── build/                  # Wails build assets (icons, manifests)
+├── Dockerfile              # Multi-stage Docker build
+├── .dockerignore           # Docker build exclusions
 ├── .env.example            # Environment variable template
 ├── main_test.go            # End-to-end verification tests
 └── go.mod                  # Dependency definitions
@@ -173,6 +187,101 @@ go test -v ./...
 ```
 
 You should see a Chromium window pop up briefly as the tests run!
+
+## 🐳 Docker Deployment (Web Version)
+
+Kortex can also run as a **web server** in a Docker container, making it accessible via WebSocket without any desktop setup.
+
+### Prerequisites
+
+1. **[Docker](https://www.docker.com/get-started)** installed
+2. **Google Gemini API Key** from [Google AI Studio](https://aistudio.google.com/app/apikey)
+
+### Building the Docker Image
+
+```bash
+docker build -t kortex-web .
+```
+
+### Running the Container
+
+**Basic usage:**
+```bash
+docker run -p 8080:8080 \
+  -e GOOGLE_API_KEY=your-api-key-here \
+  -e HEADLESS=true \
+  kortex-web
+```
+
+**With persistent database:**
+```bash
+docker run -p 8080:8080 \
+  -e GOOGLE_API_KEY=your-api-key-here \
+  -e HEADLESS=true \
+  -v $(pwd)/data:/app/data \
+  kortex-web
+```
+
+**Custom port:**
+```bash
+docker run -p 3000:3000 \
+  -e GOOGLE_API_KEY=your-api-key-here \
+  -e HEADLESS=true \
+  -e PORT=3000 \
+  kortex-web
+```
+
+### Connecting to the WebSocket
+
+Once the container is running, connect to the WebSocket endpoint:
+
+**Endpoint:** `ws://localhost:8080/ws/chat`
+
+**Message format:**
+```json
+{
+  "goal": "Navigate to google.com and search for AI news"
+}
+```
+
+**Example using JavaScript:**
+```javascript
+const ws = new WebSocket('ws://localhost:8080/ws/chat');
+
+ws.onopen = () => {
+  ws.send(JSON.stringify({ goal: "Navigate to google.com" }));
+};
+
+ws.onmessage = (event) => {
+  const data = JSON.parse(event.data);
+  console.log(`[${data.level}] ${data.message}`);
+};
+```
+
+### Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `GOOGLE_API_KEY` | *required* | Your Gemini API key |
+| `HEADLESS` | `true` | Run browser in headless mode (required for Docker) |
+| `PORT` | `8080` | Web server port |
+| `DB_PATH` | `/app/data/kortex.db` | SQLite database path |
+
+### Health Check
+
+Check if the server is running:
+```bash
+curl http://localhost:8080/health
+```
+
+Expected response:
+```json
+{
+  "status": "ok",
+  "agent": "ready"
+}
+```
+
 
 ## 🎨 Desktop App Features
 

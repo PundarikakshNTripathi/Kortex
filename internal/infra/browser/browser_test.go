@@ -12,7 +12,7 @@ func TestPlaywrightBrowser(t *testing.T) {
 	}
 
 	browser := NewPlaywrightBrowser()
-	err := browser.Init()
+	err := browser.Init(false) // Use visible browser for testing
 	if err != nil {
 		t.Fatalf("Failed to init browser: %v", err)
 	}
