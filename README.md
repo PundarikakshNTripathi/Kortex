@@ -1,6 +1,8 @@
 # Kortex: The Autonomous Interface Layer
 
 ![Go Version](https://img.shields.io/badge/Go-1.23+-00ADD8?style=for-the-badge&logo=go&logoColor=white)
+![Wails](https://img.shields.io/badge/Wails-v2-00D9FF?style=for-the-badge&logo=go&logoColor=white)
+![React](https://img.shields.io/badge/React-18+-61DAFB?style=for-the-badge&logo=react&logoColor=black)
 ![Playwright](https://img.shields.io/badge/Playwright-Go-45ba4b?style=for-the-badge&logo=playwright&logoColor=white)
 ![SQLite](https://img.shields.io/badge/SQLite-003B57?style=for-the-badge&logo=sqlite&logoColor=white)
 ![Gemini](https://img.shields.io/badge/Gemini-3_Pro-8E75B2?style=for-the-badge&logo=google-gemini&logoColor=white)
@@ -11,6 +13,14 @@
 **Kortex** is a local-first, cross-platform agentic protocol designed to decouple intent from action. Built on **Google Gemini 3 Pro** and the **Google Go Agent Development Kit (ADK)**, Kortex acts as an intelligent layer between users and the web, capable of autonomously navigating, understanding, and executing complex tasks.
 
 Imagine a browser that doesn't just display pages, but *understands* them. Kortex uses advanced visual injection and accessibility tree analysis to interact with web content just like a human would—but at machine speed.
+
+### 🖥️ Desktop App
+
+Kortex comes with a **native desktop application** built with Wails v2 and React, featuring:
+- 🎨 **Cyberpunk-themed UI** with dark mode and neon accents
+- 💬 **Dual-pane interface**: Chat on the left, Mission Control terminal on the right
+- 📡 **Real-time log streaming** with color-coded agent actions
+- 🤖 **Direct AI agent integration** with visual feedback
 
 ## 💡 Solution
 
@@ -28,6 +38,11 @@ Kortex follows the **Hexagonal Architecture (Ports & Adapters)** pattern. This e
 
 ```mermaid
 graph TD
+    subgraph Desktop ["Desktop App (Wails v2)"]
+        UI["React Frontend"]
+        Bridge["Go Bridge"]
+    end
+    
     subgraph Infrastructure ["Infrastructure (Adapters)"]
         SQLite["SQLite VectorStore"]
         Playwright["Playwright Browser"]
@@ -40,6 +55,8 @@ graph TD
         Logic["Business Logic"]
     end
 
+    UI <-->|Events| Bridge
+    Bridge --> Agent
     SQLite -->|Implements| Ports
     Playwright -->|Implements| Ports
     Logger -->|Implements| Ports
@@ -50,33 +67,176 @@ graph TD
 ## 🛠️ Tech Stack
 
 *   **Language**: [Go (Golang)](https://go.dev/) - For high performance and concurrency.
+*   **Desktop Framework**: [Wails v2](https://wails.io/) - Native desktop apps with Go + React.
+*   **Frontend**: [React 18](https://react.dev/) + TypeScript + Vite.
 *   **AI Model**: [Gemini 3 Pro](https://deepmind.google/technologies/gemini/) - Next-generation multimodal reasoning.
 *   **Agent Framework**: [Google Go ADK](https://github.com/google/adk) - Official Go Agent Development Kit.
 *   **Browser Automation**: [Playwright Go](https://github.com/playwright-community/playwright-go) - Reliable, modern web automation.
 *   **Database**: [SQLite](https://www.sqlite.org/index.html) with [sqlite-vec](https://github.com/asg017/sqlite-vec) - Local, vector-capable storage.
 *   **ORM**: [GORM](https://gorm.io/) - Developer-friendly database interaction.
-*   **Logging**: [log/slog](https://pkg.go.dev/log/slog) - Structured logging for observability.
 
 ## 📂 Directory Structure
 
 ```text
 Kortex/
+├── app.go                  # Wails App bridge (Go ↔ React)
+├── main.go                 # Wails application entry point
+├── frontend/               # React TypeScript frontend
+│   ├── src/
+│   │   ├── App.tsx         # Main component (dual-pane layout)
+│   │   ├── App.css         # Main styles
+│   │   ├── components/
+│   │   │   └── FlightRecorder.tsx  # Mission Control terminal
+│   │   └── style.css       # Global cyberpunk theme
+│   └── wailsjs/            # Auto-generated Wails bindings
 ├── internal/
 │   ├── core/
-│   │   ├── domain/       # Core data models (Session, Message, Memory)
-│   │   └── ports/        # Interfaces (Browser, VectorStore, AIProvider)
-│   └── adapters/
-│       └── agent/        # Agent Adapter (The Brain) using ADK
+│   │   ├── domain/         # Core data models (Session, Message, Memory)
+│   │   └── ports/          # Interfaces (Browser, VectorStore, AIProvider)
+│   ├── adapters/
+│   │   └── agent/          # Agent Adapter (The Brain) using ADK
 │   └── infra/
-│       ├── browser/      # Playwright Browser Adapter implementation
-│       ├── logger/       # Structured logging implementation
-│       └── sqlite/       # SQLite VectorStore implementation
-├── main_test.go          # End-to-end verification tests
-├── Makefile              # Build and utility commands
-└── go.mod                # Dependency definitions
+│       ├── browser/        # Playwright Browser Adapter
+│       ├── logger/         # Structured logging
+│       └── sqlite/         # SQLite VectorStore
+├── build/                  # Wails build assets (icons, manifests)
+├── .env.example            # Environment variable template
+├── main_test.go            # End-to-end verification tests
+└── go.mod                  # Dependency definitions
 ```
 
-## 📚 Documentation
+## 🚀 Quick Start
+
+### Prerequisites
+
+1. **[Go 1.23+](https://go.dev/dl/)** installed
+2. **[Node.js 18+](https://nodejs.org/)** and npm installed
+3. **[Wails CLI v2](https://wails.io/docs/gettingstarted/installation)** installed:
+   ```bash
+   go install github.com/wailsapp/wails/v2/cmd/wails@latest
+   ```
+4. **Playwright browsers** installed:
+   ```bash
+   go run github.com/playwright-community/playwright-go/cmd/playwright@latest install --with-deps
+   ```
+5. **Google Gemini API Key** from [Google AI Studio](https://aistudio.google.com/app/apikey)
+
+### Installation
+
+1. **Clone the repository**:
+   ```bash
+   git clone https://github.com/PundarikakshNTripathi/Kortex.git
+   cd Kortex
+   ```
+
+2. **Install Go dependencies**:
+   ```bash
+   go mod download
+   ```
+
+3. **Install frontend dependencies**:
+   ```bash
+   cd frontend
+   npm install
+   cd ..
+   ```
+
+4. **Set up environment variables**:
+   ```bash
+   cp .env.example .env
+   ```
+   
+   Edit `.env` and add your API key:
+   ```env
+   GOOGLE_API_KEY=your-actual-api-key-here
+   ```
+
+### Running the Desktop App
+
+**Development mode** (with hot reload):
+```bash
+wails dev
+```
+
+**Production build**:
+```bash
+wails build
+.\build\bin\Kortex.exe  # Windows
+./build/bin/Kortex      # macOS/Linux
+```
+
+### Running Tests
+
+To verify the core functionality:
+```bash
+go test -v ./...
+```
+
+You should see a Chromium window pop up briefly as the tests run!
+
+## 🎨 Desktop App Features
+
+### Cyberpunk UI Theme
+
+- **Dark Mode**: Deep space blue background (#0a0e27)
+- **Neon Accents**: Electric cyan (#00d9ff) and purple (#a855f7)
+- **Glassmorphism**: Semi-transparent panels with blur effects
+- **Smooth Animations**: Fade-in, slide-in, and pulse effects
+- **Matrix Terminal**: Scanning line effect in Mission Control
+
+### Dual-Pane Layout
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  ⚡ KORTEX - Autonomous Interface Layer                 │
+├──────────────────────────┬──────────────────────────────┤
+│                          │  ⚙ MISSION CONTROL           │
+│  Chat Interface (60%)    │                              │
+│                          │  Terminal View (40%)         │
+│  - User messages         │  - Real-time logs            │
+│  - Agent responses       │  - Color-coded levels        │
+│  - Input field           │  - Auto-scroll               │
+│  - Loading states        │  - Timestamps                │
+│                          │                              │
+└──────────────────────────┴──────────────────────────────┘
+```
+
+### Mission Control Log Colors
+
+| Log Level | Color | Icon | Description |
+|-----------|-------|------|-------------|
+| NAVIGATE | Cyan | 🔵 | Browser navigation |
+| CLICK | Green | 🟢 | Element clicks |
+| TYPE | Yellow | 🟡 | Text input |
+| HIGHLIGHT | Magenta | 🟣 | Visual feedback |
+| GET_SNAPSHOT | Blue | 🔷 | Page analysis |
+| PLANNING | Purple | 🟪 | Agent reasoning |
+| INIT | Cyan | ⚙️ | Initialization |
+| USER | White | 📝 | User input |
+| ERROR | Red | ❌ | Errors |
+| COMPLETE | Green | ✅ | Task completion |
+
+### Example Commands
+
+Try these in the chat interface:
+
+```
+Navigate to google.com
+```
+
+```
+Highlight the search bar with message "I will type here"
+```
+
+```
+Type "AI news" into the search bar
+```
+
+```
+Click the search button
+```
+
+## 📚 Core Components
 
 ### The "Brain": Agent Adapter (`internal/adapters/agent`)
 
@@ -90,7 +250,7 @@ The Agent Adapter is the intelligence center of Kortex. It connects the reasonin
     *   `Type(selector, text)`: Input data.
     *   `Highlight(selector, message)`: Visually communicate intent to the user.
     *   `GetSnapshot()`: Read the page's accessibility tree.
-*   **Flight Recorder**: Logs every tool execution to `kortex_flight_recorder.jsonl` for debugging and replay.
+*   **Flight Recorder**: Logs every tool execution for debugging and replay.
 
 ### The "Hands": Browser Adapter (`internal/infra/browser`)
 
@@ -115,59 +275,55 @@ The Browser Adapter is Kortex's primary way of interacting with the world. Imple
 *   **Domain Models**: `Session`, `Message`, and `MemoryFragment` define how Kortex thinks and remembers.
 *   **Vector Memory**: Uses cosine similarity search to retrieve relevant context from past interactions, giving Kortex long-term memory.
 
-## 🚀 Setup & Running
+### The "Interface": Wails Desktop App
 
-### Prerequisites
+**Go Bridge (`app.go`)**:
+- Initializes browser, vector store, and agent on startup
+- Exposes `SendPrompt(prompt string)` method to React
+- Streams logs to frontend via `runtime.EventsEmit`
+- Handles concurrent agent execution with mutex
 
-*   [Go 1.23+](https://go.dev/dl/) installed.
-*   **Git** installed.
-*   **Google Cloud API Key** with Gemini access.
-
-### Installation
-
-1.  **Clone the repository**:
-    ```bash
-    git clone https://github.com/PundarikakshNTripathi/Kortex.git
-    cd Kortex
-    ```
-
-2.  **Install Dependencies**:
-    ```bash
-    go mod download
-    ```
-
-3.  **Install Playwright Drivers**:
-    Kortex needs the browser binaries to run.
-    ```bash
-    go run github.com/playwright-community/playwright-go/cmd/playwright@latest install --with-deps
-    ```
-
-4.  **Set API Key**:
-    ```bash
-    export GOOGLE_API_KEY="your-api-key"
-    ```
-
-### Running Tests
-
-To verify that everything is working (including the browser launching and agent logic):
-
-```bash
-go test -v ./...
-```
-
-You should see a Chromium window pop up briefly as the tests run!
+**React Frontend**:
+- **App.tsx**: Main component with chat and terminal panels
+- **FlightRecorder.tsx**: Real-time log display with color coding
+- **Event Streaming**: Listens to `kortex:log` events from Go backend
 
 ## ❓ Troubleshooting
 
+**Q: The desktop app doesn't launch.**
+*   **A**: Ensure you have Wails CLI installed: `go install github.com/wailsapp/wails/v2/cmd/wails@latest`
+*   Run `wails doctor` to check your environment
+
 **Q: The browser doesn't open.**
-*   **A**: Ensure you've run the Playwright install command (`go run ... install --with-deps`).
+*   **A**: Ensure you've run the Playwright install command: `go run github.com/playwright-community/playwright-go/cmd/playwright@latest install --with-deps`
+
+**Q: "GOOGLE_API_KEY not set" error.**
+*   **A**: Create a `.env` file in the root directory with your API key:
+    ```env
+    GOOGLE_API_KEY=your-api-key-here
+    ```
+*   Get your key from [Google AI Studio](https://aistudio.google.com/app/apikey)
+
+**Q: Frontend build errors.**
+*   **A**: Delete `frontend/node_modules` and run `npm install` again
+*   Ensure you're using Node.js 18+
 
 **Q: "Vector search not supported" error.**
 *   **A**: The current implementation uses a pure Go SQLite driver. For full vector search capabilities, ensure the `sqlite-vec` extension is properly loaded in your environment (or use the provided mock/fallback for basic testing).
 
-**Q: Agent fails to authenticate.**
-*   **A**: Ensure `GOOGLE_API_KEY` is set in your environment variables.
+## 🤝 Contributing
+
+This project follows the Hexagonal Architecture pattern. When adding features:
+
+1. Define interfaces in `internal/core/ports/`
+2. Implement adapters in `internal/adapters/` or `internal/infra/`
+3. Update the Wails bridge in `app.go` if needed
+4. Add UI components in `frontend/src/components/`
+
+## 📝 License
+
+MIT License - see LICENSE file for details
 
 ---
 
-*Built with ❤️ by the Kortex Team.*
+**Built with ❤️ using Wails v2, React, Go, and Google Gemini**
