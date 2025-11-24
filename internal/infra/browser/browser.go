@@ -104,6 +104,36 @@ func (pb *PlaywrightBrowser) Highlight(selector, message string) error {
 	return nil
 }
 
+func (pb *PlaywrightBrowser) Click(selector string) error {
+	if pb.page == nil {
+		return fmt.Errorf("browser not initialized")
+	}
+
+	err := pb.page.Click(selector, playwright.PageClickOptions{
+		Timeout: playwright.Float(10000),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to click %s: %v", selector, err)
+	}
+
+	return nil
+}
+
+func (pb *PlaywrightBrowser) Type(selector, text string) error {
+	if pb.page == nil {
+		return fmt.Errorf("browser not initialized")
+	}
+
+	err := pb.page.Fill(selector, text, playwright.PageFillOptions{
+		Timeout: playwright.Float(10000),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to type into %s: %v", selector, err)
+	}
+
+	return nil
+}
+
 type AccessibilityNode struct {
 	Role     string              `json:"role"`
 	Name     string              `json:"name"`

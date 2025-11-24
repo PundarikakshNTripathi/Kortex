@@ -1,27 +1,51 @@
-# Binaries
-/bin/
-/dist/
+# Binaries for programs and plugins
 *.exe
+*.exe~
 *.dll
 *.so
 *.dylib
 
-# Logs
-*.log
-kortex_flight_recorder.jsonl
+# Test binary, built with `go test -c`
+*.test
 
-# Environment Variables
+# Output of the go coverage tool
+*.out
+
+# Go workspace file
+go.work
+
+# Database files
+*.db
+*.db-shm
+*.db-wal
+test_kortex.db
+
+# Environment variables (SENSITIVE)
 .env
 .env.local
+.env.*.local
 
-# IDEs
+# Wails build output
+build/bin/
+
+# Frontend dependencies
+frontend/node_modules/
+frontend/dist/
+
+# IDE / Editor files
 .vscode/
 .idea/
+*.swp
+*.swo
+*~
 
-# OS
+# OS files
 .DS_Store
 Thumbs.db
 
-# Agentic Workflows & Artifacts
-.agent/
-.gemini/
+# Flight Recorder logs (may contain sensitive data)
+kortex_flight_recorder.jsonl
+
+# Temporary files
+*.tmp
+*.temp
