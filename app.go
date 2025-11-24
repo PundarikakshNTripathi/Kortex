@@ -14,7 +14,9 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
-// App struct holds the Kortex core components
+// App struct holds the Kortex core components.
+// This struct is the "Bridge" between the Go backend and the React frontend.
+// Methods defined here can be called directly from JavaScript!
 type App struct {
 	ctx         context.Context
 	agent       *agent.AgentAdapter
@@ -28,11 +30,12 @@ func NewApp() *App {
 	return &App{}
 }
 
-// startup is called when the app starts
+// startup is called when the app starts. The context is saved
+// so we can call the runtime methods (like EventsEmit) later.
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 
-	// Load environment variables
+	// 1. Load Environment Variables
 	if err := godotenv.Load(); err != nil {
 		log.Println("No .env file found, using system environment variables")
 	}
@@ -43,17 +46,19 @@ func (a *App) startup(ctx context.Context) {
 		return
 	}
 
-	// Initialize Browser
+	// 2. Initialize Browser
+	// For the desktop app, we pass 'false' to Init() so the browser is VISIBLE.
+	// This lets the user see exactly what the agent is doing.
 	a.emitLog("INIT", "Initializing Playwright browser...")
 	browserInstance := browser.NewPlaywrightBrowser()
-	if err := browserInstance.Init(false); err != nil { // Desktop app uses visible browser
+	if err := browserInstance.Init(false); err != nil {
 		a.emitLog("ERROR", fmt.Sprintf("Failed to initialize browser: %v", err))
 		return
 	}
 	a.browser = browserInstance
 	a.emitLog("INIT", "Browser initialized successfully ✓")
 
-	// Initialize Vector Store
+	// 3. Initialize Vector Store
 	a.emitLog("INIT", "Initializing vector store...")
 	dbPath := os.Getenv("DB_PATH")
 	if dbPath == "" {
@@ -67,13 +72,14 @@ func (a *App) startup(ctx context.Context) {
 	a.vectorStore = vectorStore
 	a.emitLog("INIT", "Vector store initialized successfully ✓")
 
-	// Initialize Agent
+	// 4. Initialize Agent
 	a.emitLog("INIT", "Initializing Kortex agent...")
 	a.agent = agent.NewAgent(a.browser, a.vectorStore, apiKey)
 	a.emitLog("INIT", "🚀 Kortex agent ready! Awaiting your command...")
 }
 
-// shutdown is called when the app is closing
+// shutdown is called when the app is closing.
+// We use this to clean up resources like the browser process.
 func (a *App) shutdown(ctx context.Context) {
 	if a.browser != nil {
 		a.emitLog("SHUTDOWN", "Closing browser...")
@@ -81,7 +87,8 @@ func (a *App) shutdown(ctx context.Context) {
 	}
 }
 
-// SendPrompt handles user input and executes the agent task
+// SendPrompt is exposed to the frontend.
+// When the user types a goal and hits Enter, this function runs.
 func (a *App) SendPrompt(prompt string) string {
 	if a.agent == nil {
 		return "Error: Agent not initialized. Please check your API key."
@@ -89,7 +96,8 @@ func (a *App) SendPrompt(prompt string) string {
 
 	a.emitLog("USER", fmt.Sprintf("📝 %s", prompt))
 
-	// Execute agent task in a goroutine to avoid blocking
+	// Execute agent task in a goroutine (background thread)
+	// This ensures the UI doesn't freeze while the agent is working.
 	go func() {
 		a.mu.Lock()
 		defer a.mu.Unlock()
@@ -112,7 +120,8 @@ func (a *App) SendPrompt(prompt string) string {
 	return "Task started. Watch the Mission Control for updates."
 }
 
-// emitLog sends a log event to the frontend
+// emitLog sends a log event to the frontend.
+// The React frontend listens for "kortex:log" events and updates the terminal.
 func (a *App) emitLog(level, message string) {
 	if a.ctx != nil {
 		runtime.EventsEmit(a.ctx, "kortex:log", map[string]string{
@@ -123,7 +132,8 @@ func (a *App) emitLog(level, message string) {
 	log.Printf("[%s] %s", level, message)
 }
 
-// GetStatus returns the current status of the agent
+// GetStatus returns the current status of the agent.
+// Used by the frontend to show if the system is ready.
 func (a *App) GetStatus() string {
 	if a.agent == nil {
 		return "Not initialized"

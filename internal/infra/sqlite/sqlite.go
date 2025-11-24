@@ -10,22 +10,27 @@ import (
 	"gorm.io/gorm"
 )
 
+// SQLiteVectorStore implements the VectorStore interface using a local SQLite database.
+// It uses the 'sqlite-vec' extension (conceptually) to perform vector similarity searches.
 type SQLiteVectorStore struct {
-	db *gorm.DB
+	db *gorm.DB // The GORM database connection
 }
 
+// NewSQLiteVectorStore opens or creates the database file.
 func NewSQLiteVectorStore(dbPath string) (*SQLiteVectorStore, error) {
+	// Open the SQLite database file
 	db, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to database: %w", err)
 	}
 
-	// Enable foreign keys
+	// Enable foreign keys for data integrity
 	if err := db.Exec("PRAGMA foreign_keys = ON").Error; err != nil {
 		return nil, fmt.Errorf("failed to enable foreign keys: %w", err)
 	}
 
-	// AutoMigrate
+	// AutoMigrate creates the tables if they don't exist.
+	// It looks at our struct definitions (Session, Message, etc.) and makes matching tables.
 	if err := db.AutoMigrate(&domain.Session{}, &domain.Message{}, &domain.MemoryFragment{}); err != nil {
 		return nil, fmt.Errorf("failed to auto migrate: %w", err)
 	}
@@ -33,35 +38,25 @@ func NewSQLiteVectorStore(dbPath string) (*SQLiteVectorStore, error) {
 	return &SQLiteVectorStore{db: db}, nil
 }
 
+// Save stores a memory fragment in the database.
 func (s *SQLiteVectorStore) Save(ctx context.Context, fragment *domain.MemoryFragment) error {
 	return s.db.WithContext(ctx).Create(fragment).Error
 }
 
+// Search finds memories that are semantically similar to the query vector.
+// It uses a cosine distance function: smaller distance = more similar.
 func (s *SQLiteVectorStore) Search(ctx context.Context, queryVector []float32, limit int) ([]domain.MemoryFragment, error) {
 	var fragments []domain.MemoryFragment
 
-	// Serialize query vector to JSON string for sqlite-vec if needed,
-	// but typically sqlite-vec takes a blob or specific format.
-	// However, the user requested "Raw SQL for the sqlite-vec extension".
-	// Assuming vec_distance_cosine takes two vectors.
-	// We need to pass the query vector correctly.
-	// For this implementation, we'll assume the query vector can be passed as a parameter.
-	// Note: The actual syntax depends on how sqlite-vec is loaded and used.
-	// Common pattern: SELECT *, vec_distance_cosine(embedding, ?) as distance FROM memory_fragments ORDER BY distance LIMIT ?
-
-	// We need to convert []float32 to a format sqlite-vec understands (often JSON or binary).
-	// Let's try JSON string representation for now as it's common for some extensions,
-	// or we might need a specific serialization.
-	// Given "Embedding (Float32 array, len 768)", we'll try passing it as a JSON string first.
-
+	// We convert the query vector to a JSON string to pass it to the SQL query.
 	queryVectorJSON, err := json.Marshal(queryVector)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal query vector: %w", err)
 	}
 
-	// Using Raw SQL as requested
-	// Note: We are selecting all fields from memory_fragments
-	// We assume the table name is `memory_fragments` (GORM default snake_case plural)
+	// This raw SQL query uses the vector extension function `vec_distance_cosine`.
+	// It calculates the distance between the stored embedding and our query.
+	// We order by distance (ascending) to get the closest matches.
 	query := `
 		SELECT id, content, embedding, tags, created_at, vec_distance_cosine(embedding, ?) as distance
 		FROM memory_fragments

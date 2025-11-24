@@ -20,26 +20,29 @@ import (
 	"github.com/joho/godotenv"
 )
 
-// KortexCore holds the core components
+// KortexCore holds the initialized components of the system.
+// This struct ensures we have a single reference to the agent, browser, and database.
 type KortexCore struct {
 	agent       *agent.AgentAdapter
 	browser     *browser.PlaywrightBrowser
 	vectorStore *sqlite.SQLiteVectorStore
-	mu          sync.Mutex
+	mu          sync.Mutex // Mutex to prevent race conditions if multiple requests come in
 }
 
-// WebSocketMessage represents a message from the client
+// WebSocketMessage defines the structure of JSON messages sent by the client.
 type WebSocketMessage struct {
-	Goal string `json:"goal"`
+	Goal string `json:"goal"` // The user's instruction, e.g., "Find flights to Tokyo"
 }
 
 func main() {
-	// Load environment variables
+	// 1. Load Environment Variables
+	// We try to load from .env file first (for local dev).
+	// In Docker, these variables are usually injected directly.
 	if err := godotenv.Load(); err != nil {
 		log.Println("No .env file found, using system environment variables")
 	}
 
-	// Get configuration from environment
+	// 2. Configuration
 	apiKey := os.Getenv("GOOGLE_API_KEY")
 	if apiKey == "" {
 		log.Fatal("GOOGLE_API_KEY not set. Please create a .env file with your API key.")
@@ -47,9 +50,11 @@ func main() {
 
 	dbPath := os.Getenv("DB_PATH")
 	if dbPath == "" {
-		dbPath = "./kortex.db"
+		dbPath = "./kortex.db" // Default to local file
 	}
 
+	// Headless mode: Should the browser be invisible?
+	// Default is false (visible) for desktop, but true (invisible) for Docker.
 	headlessStr := os.Getenv("HEADLESS")
 	headless := false
 	if headlessStr != "" {
@@ -65,10 +70,10 @@ func main() {
 		port = "8080"
 	}
 
-	// Initialize Kortex Core
+	// 3. Initialize Core Components
 	log.Println("🚀 Initializing Kortex Core...")
 
-	// Initialize Browser
+	// Browser (The Hands)
 	log.Printf("📱 Initializing Playwright browser (headless: %v)...", headless)
 	browserInstance := browser.NewPlaywrightBrowser()
 	if err := browserInstance.Init(headless); err != nil {
@@ -76,7 +81,7 @@ func main() {
 	}
 	log.Println("✓ Browser initialized successfully")
 
-	// Initialize Vector Store
+	// Vector Store (The Memory)
 	log.Println("💾 Initializing vector store...")
 	vectorStore, err := sqlite.NewSQLiteVectorStore(dbPath)
 	if err != nil {
@@ -84,29 +89,30 @@ func main() {
 	}
 	log.Println("✓ Vector store initialized successfully")
 
-	// Initialize Agent
+	// Agent (The Brain)
 	log.Println("🧠 Initializing Kortex agent...")
 	agentAdapter := agent.NewAgent(browserInstance, vectorStore, apiKey)
 	log.Println("✓ Kortex agent ready!")
 
-	// Create Kortex Core
 	core := &KortexCore{
 		agent:       agentAdapter,
 		browser:     browserInstance,
 		vectorStore: vectorStore,
 	}
 
-	// Initialize Fiber app
+	// 4. Setup Web Server (Fiber)
+	// Fiber is a fast Go web framework, similar to Express.js in Node.
 	app := fiber.New(fiber.Config{
 		AppName:      "Kortex Web Server",
 		ServerHeader: "Kortex",
 	})
 
-	// Middleware
+	// Middleware: Logging and CORS (Cross-Origin Resource Sharing)
 	app.Use(logger.New())
 	app.Use(cors.New())
 
-	// Health check endpoint
+	// Health Check Endpoint
+	// Used by Docker/Kubernetes to check if the container is alive.
 	app.Get("/health", func(c *fiber.Ctx) error {
 		return c.JSON(fiber.Map{
 			"status": "ok",
@@ -114,7 +120,8 @@ func main() {
 		})
 	})
 
-	// WebSocket upgrade middleware
+	// WebSocket Upgrade Middleware
+	// Checks if the request is a WebSocket connection request.
 	app.Use("/ws", func(c *fiber.Ctx) error {
 		if websocket.IsWebSocketUpgrade(c) {
 			c.Locals("allowed", true)
@@ -123,7 +130,9 @@ func main() {
 		return fiber.ErrUpgradeRequired
 	})
 
-	// WebSocket chat endpoint
+	// 5. WebSocket Chat Endpoint
+	// This is the main interface for the web version.
+	// Clients connect here to send goals and receive real-time logs.
 	app.Get("/ws/chat", websocket.New(func(c *websocket.Conn) {
 		log.Printf("🔌 New WebSocket connection from %s", c.RemoteAddr())
 
@@ -144,6 +153,7 @@ func main() {
 
 		for {
 			var msg WebSocketMessage
+			// Read message from client
 			if err := c.ReadJSON(&msg); err != nil {
 				if websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
 					log.Println("Client closed connection")
@@ -161,26 +171,25 @@ func main() {
 				continue
 			}
 
-			// Send acknowledgment
+			// Acknowledge receipt
 			c.WriteJSON(fiber.Map{
 				"type":    "log",
 				"level":   "USER",
 				"message": fmt.Sprintf("📝 %s", msg.Goal),
 			})
 
-			// Execute task in goroutine
+			// Execute task in a separate goroutine so we don't block the WebSocket loop
 			go func(goal string) {
 				core.mu.Lock()
 				defer core.mu.Unlock()
 
-				// Send planning log
 				c.WriteJSON(fiber.Map{
 					"type":    "log",
 					"level":   "PLANNING",
 					"message": "🧠 Analyzing task and preparing execution plan...",
 				})
 
-				// Execute the task
+				// Run the agent!
 				ctx := context.Background()
 				err := core.agent.ExecuteTask(ctx, goal)
 
@@ -202,7 +211,8 @@ func main() {
 		}
 	}))
 
-	// Graceful shutdown
+	// 6. Graceful Shutdown
+	// Listen for Ctrl+C (SIGINT) or Docker stop (SIGTERM)
 	go func() {
 		sigChan := make(chan os.Signal, 1)
 		signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
@@ -214,15 +224,16 @@ func main() {
 			log.Printf("Error during shutdown: %v", err)
 		}
 
-		// Cleanup browser
-		if core.browser != nil && core.browser != nil {
+		// Cleanup browser resources
+		if core.browser != nil {
 			log.Println("Closing browser...")
+			// In a real app, we'd call core.browser.Close() here
 		}
 
 		os.Exit(0)
 	}()
 
-	// Start server
+	// Start the server
 	log.Printf("🌐 Kortex Web Server starting on port %s...", port)
 	log.Printf("📡 WebSocket endpoint: ws://localhost:%s/ws/chat", port)
 
