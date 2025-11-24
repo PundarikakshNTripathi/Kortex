@@ -49,3 +49,6 @@ kortex_flight_recorder.jsonl
 # Temporary files
 *.tmp
 *.temp
+
+# Documentation (Local only)
+WALKTHROUGH.md

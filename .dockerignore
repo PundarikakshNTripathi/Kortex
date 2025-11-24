@@ -1,0 +1,47 @@
+# Ignore version control
+.git
+.gitignore
+
+# Ignore build artifacts
+build/
+dist/
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Ignore test files
+*_test.go
+test_*.db
+kortex_flight_recorder.jsonl
+
+# Ignore environment files
+.env
+.env.local
+
+# Ignore IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Ignore node modules (frontend)
+frontend/node_modules/
+frontend/dist/
+
+# Ignore OS files
+.DS_Store
+Thumbs.db
+
+# Ignore documentation
+README.md
+docs/
+
+# Ignore CI/CD
+.github/
+.agent/
+
+# Ignore Wails specific files
+wails.json
+frontend/
+main_test.go

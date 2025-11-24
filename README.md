@@ -1,12 +1,15 @@
 # Kortex: The Autonomous Interface Layer
 
+> **Copyright © 2025 Pundarikaksh N Tripathi**  
+> This project is licensed under the CC BY-NC-ND 4.0 license. See the [LICENSE](LICENSE) file for details.
+
 ![Go Version](https://img.shields.io/badge/Go-1.23+-00ADD8?style=for-the-badge&logo=go&logoColor=white)
 ![Wails](https://img.shields.io/badge/Wails-v2-00D9FF?style=for-the-badge&logo=go&logoColor=white)
 ![React](https://img.shields.io/badge/React-18+-61DAFB?style=for-the-badge&logo=react&logoColor=black)
 ![Playwright](https://img.shields.io/badge/Playwright-Go-45ba4b?style=for-the-badge&logo=playwright&logoColor=white)
 ![SQLite](https://img.shields.io/badge/SQLite-003B57?style=for-the-badge&logo=sqlite&logoColor=white)
 ![Gemini](https://img.shields.io/badge/Gemini-3_Pro-8E75B2?style=for-the-badge&logo=google-gemini&logoColor=white)
-![License](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)
+![License](https://img.shields.io/badge/License-CC_BY--NC--ND_4.0-lightgrey?style=for-the-badge)
 
 ## 📖 Introduction
 
@@ -14,23 +17,38 @@
 
 Imagine a browser that doesn't just display pages, but *understands* them. Kortex uses advanced visual injection and accessibility tree analysis to interact with web content just like a human would—but at machine speed.
 
-### 🖥️ Desktop App
+---
 
-Kortex comes with a **native desktop application** built with Wails v2 and React, featuring:
-- 🎨 **Cyberpunk-themed UI** with dark mode and neon accents
-- 💬 **Dual-pane interface**: Chat on the left, Mission Control terminal on the right
-- 📡 **Real-time log streaming** with color-coded agent actions
-- 🤖 **Direct AI agent integration** with visual feedback
+## 📑 Table of Contents
 
-## 💡 Solution
+- [📖 Introduction](#-introduction)
+- [💡 Solution & How It Works](#-solution--how-it-works)
+- [🏗️ Architecture](#-architecture)
+- [🛠️ Tech Stack & Engineering Decisions](#-tech-stack--engineering-decisions)
+- [📂 Directory Structure](#-directory-structure)
+- [🚀 Quick Start](#-quick-start)
+- [🎨 Desktop App Features](#-desktop-app-features)
+- [🐳 Docker Deployment (Web Version)](#-docker-deployment-web-version)
+- [📚 Core Components](#-core-components)
+- [❓ Troubleshooting](#-troubleshooting)
+- [🤝 Contributing](#-contributing)
+- [📄 License](#-license)
 
-The modern web is complex. Automating it requires more than just scripts; it requires **agency**. Kortex provides:
+---
 
-*   **Autonomous Navigation**: Intelligently traverses web applications using ReAct loops.
-*   **Visual Understanding**: Analyzes the accessibility tree to "see" the page structure.
-*   **Visual Injection**: Communicates back to the user by highlighting elements and overlaying information directly on the web page.
-*   **Memory**: Remembers context and past interactions using vector search.
-*   **Structured Reasoning**: Uses Google's ADK to manage agent state, tools, and execution flow.
+## 💡 Solution & How It Works
+
+The modern web is complex. Automating it requires more than just scripts; it requires **agency**. Kortex provides a robust solution that bridges the gap between human intent and machine execution.
+
+### How It Works
+
+1.  **Intent Understanding**: You type a goal (e.g., "Find the cheapest flight to Tokyo"). Kortex uses **Gemini 3 Pro** to understand the semantics and break this down into logical steps.
+2.  **Reasoning Loop (ReAct)**: Kortex enters a "Reason-Act" loop. It looks at the current state of the browser, decides what to do next (e.g., "Type 'Tokyo' into the search box"), and executes that action.
+3.  **Visual Perception**: Unlike traditional scrapers that look at raw HTML, Kortex builds a simplified **Accessibility Tree**. This allows it to "see" the page structure (buttons, inputs, links) just like a screen reader or a human would, making it highly resilient to layout changes.
+4.  **Action Execution**: Using **Playwright**, Kortex physically interacts with the page—clicking, typing, and scrolling. It even highlights elements visually so you can follow along.
+5.  **Memory & Context**: Every interaction is stored in a local **SQLite Vector Database**. This allows Kortex to remember past searches and preferences, providing a personalized experience without sending data to the cloud.
+
+---
 
 ## 🏗️ Architecture
 
@@ -38,72 +56,107 @@ Kortex follows the **Hexagonal Architecture (Ports & Adapters)** pattern. This e
 
 ```mermaid
 graph TD
-    subgraph Desktop ["Desktop App (Wails v2)"]
-        UI["React Frontend"]
-        Bridge["Go Bridge"]
+    %% Styling
+    classDef core fill:#ff9a9e,stroke:#333,stroke-width:2px,color:black;
+    classDef infra fill:#a18cd1,stroke:#333,stroke-width:2px,color:black;
+    classDef app fill:#fad0c4,stroke:#333,stroke-width:2px,color:black;
+    classDef external fill:#84fab0,stroke:#333,stroke-width:2px,color:black;
+
+    subgraph Application_Layer [Application Layer]
+        direction TB
+        Desktop[Desktop App\nWails v2 + React]:::app
+        WebServer[Web Server\nFiber + WebSocket]:::app
     end
+
+    subgraph Core_Domain [Core Domain (The Brain)]
+        direction TB
+        Logic[Business Logic\nReAct Loop]:::core
+        Ports[Ports Interfaces\n(Abstractions)]:::core
+    end
+
+    subgraph Infrastructure_Layer [Infrastructure (Adapters)]
+        direction TB
+        AgentAdapter[Agent Adapter\nGoogle ADK + Gemini]:::infra
+        BrowserAdapter[Browser Adapter\nPlaywright]:::infra
+        VectorDB[Vector Store\nSQLite + Embeddings]:::infra
+        FlightRecorder[Flight Recorder\nStructured Logger]:::infra
+    end
+
+    subgraph External_World [External World]
+        User((User)):::external
+        Web((Internet)):::external
+        LLM((Gemini API)):::external
+    end
+
+    %% Connections
+    User <-->|UI Events| Desktop
+    User <-->|WebSocket| WebServer
     
-    subgraph Infrastructure ["Infrastructure (Adapters)"]
-        SQLite["SQLite VectorStore"]
-        Playwright["Playwright Browser"]
-        Logger["Flight Recorder"]
-        Agent["Agent Adapter (ADK)"]
-    end
+    Desktop -->|Calls| AgentAdapter
+    WebServer -->|Calls| AgentAdapter
 
-    subgraph Core ["Core Domain"]
-        Ports["Ports (Interfaces)"]
-        Logic["Business Logic"]
-    end
+    AgentAdapter -->|Implements| Ports
+    BrowserAdapter -->|Implements| Ports
+    VectorDB -->|Implements| Ports
+    FlightRecorder -->|Implements| Ports
 
-    UI <-->|Events| Bridge
-    Bridge --> Agent
-    SQLite -->|Implements| Ports
-    Playwright -->|Implements| Ports
-    Logger -->|Implements| Ports
-    Agent -->|Uses| Ports
     Logic -->|Uses| Ports
+    
+    AgentAdapter <-->|API| LLM
+    BrowserAdapter <-->|Navigates| Web
 ```
 
-## 🛠️ Tech Stack
+---
 
-*   **Language**: [Go (Golang)](https://go.dev/) - For high performance and concurrency.
-*   **Desktop Framework**: [Wails v2](https://wails.io/) - Native desktop apps with Go + React.
-*   **Frontend**: [React 18](https://react.dev/) + TypeScript + Vite.
-*   **AI Model**: [Gemini 3 Pro](https://deepmind.google/technologies/gemini/) - Next-generation multimodal reasoning.
-*   **Agent Framework**: [Google Go ADK](https://github.com/google/adk) - Official Go Agent Development Kit.
-*   **Browser Automation**: [Playwright Go](https://github.com/playwright-community/playwright-go) - Reliable, modern web automation.
-*   **Database**: [SQLite](https://www.sqlite.org/index.html) with [sqlite-vec](https://github.com/asg017/sqlite-vec) - Local, vector-capable storage.
-*   **ORM**: [GORM](https://gorm.io/) - Developer-friendly database interaction.
+## 🛠️ Tech Stack & Engineering Decisions
+
+We chose this stack to balance **performance**, **developer experience**, and **capabilities**.
+
+| Component | Technology | Reasoning |
+|-----------|------------|-----------|
+| **Language** | **Go (Golang)** | Go offers exceptional concurrency (goroutines) which is crucial for handling multiple browser contexts and agent threads simultaneously. It's strictly typed, compiles to a single binary, and has a massive ecosystem. |
+| **Desktop** | **Wails v2** | Unlike Electron which bundles a whole Chrome browser (heavy RAM usage), Wails uses the OS's native webview (WebView2 on Windows, WebKit on macOS). This results in a tiny binary (~15MB vs ~100MB) and low memory footprint. |
+| **Frontend** | **React + Vite** | React provides a component-based UI that is easy to manage. Vite offers lightning-fast HMR (Hot Module Replacement) for a great dev experience. |
+| **AI Model** | **Gemini 3 Pro** | Gemini's large context window and multimodal capabilities make it ideal for understanding complex web pages and reasoning about navigation steps. |
+| **Agent** | **Google ADK** | The Agent Development Kit provides a standardized way to build agents, managing tool calls and state transitions reliability. |
+| **Browser** | **Playwright** | Playwright is faster and more reliable than Selenium. It supports modern web features, handles dynamic content (SPAs) effortlessly, and allows for easy headless execution. |
+| **Database** | **SQLite + Vec** | We use SQLite for a local-first approach. The `sqlite-vec` extension allows us to perform vector similarity search directly on the user's machine, keeping data private and fast. |
+
+---
 
 ## 📂 Directory Structure
 
+Here is a detailed breakdown of the project structure to help you navigate the codebase.
+
 ```text
 Kortex/
-├── app.go                  # Wails App bridge (Go ↔ React)
-├── main.go                 # Wails application entry point
-├── frontend/               # React TypeScript frontend
+├── app.go                  # Wails Bridge: Connects Go backend to React frontend.
+├── main.go                 # Desktop Entry Point: Initializes Wails application.
+├── cmd/
+│   └── web/
+│       └── main.go         # Web Server Entry Point: Runs Kortex as a Docker/Web service.
+├── frontend/               # User Interface (React)
 │   ├── src/
-│   │   ├── App.tsx         # Main component (dual-pane layout)
-│   │   ├── App.css         # Main styles
-│   │   ├── components/
-│   │   │   └── FlightRecorder.tsx  # Mission Control terminal
-│   │   └── style.css       # Global cyberpunk theme
-│   └── wailsjs/            # Auto-generated Wails bindings
-├── internal/
+│   │   ├── App.tsx         # Main Layout: Dual-pane interface (Chat + Terminal).
+│   │   ├── components/     # UI Components (FlightRecorder, ChatBox, etc.).
+│   │   └── wailsjs/        # Generated Bindings: Go functions callable from JS.
+├── internal/               # Private Application Code
 │   ├── core/
-│   │   ├── domain/         # Core data models (Session, Message, Memory)
-│   │   └── ports/          # Interfaces (Browser, VectorStore, AIProvider)
+│   │   ├── domain/         # Data Models: Defines Session, Message, Memory structs.
+│   │   └── ports/          # Interfaces: Defines contracts for Adapters (Hexagonal Arch).
 │   ├── adapters/
-│   │   └── agent/          # Agent Adapter (The Brain) using ADK
+│   │   └── agent/          # The Brain: Implements the ReAct loop and Gemini integration.
 │   └── infra/
-│       ├── browser/        # Playwright Browser Adapter
-│       ├── logger/         # Structured logging
-│       └── sqlite/         # SQLite VectorStore
-├── build/                  # Wails build assets (icons, manifests)
-├── .env.example            # Environment variable template
-├── main_test.go            # End-to-end verification tests
-└── go.mod                  # Dependency definitions
+│       ├── browser/        # The Hands: Playwright implementation for browser control.
+│       ├── logger/         # The Black Box: Structured logging for the Flight Recorder.
+│       └── sqlite/         # The Memory: Vector database implementation.
+├── build/                  # Build Artifacts: Icons, manifests, and compiled binaries.
+├── Dockerfile              # Container Config: For running Kortex in Docker.
+├── .env.example            # Config Template: API keys and environment settings.
+└── go.mod                  # Dependencies: Go module definitions.
 ```
+
+---
 
 ## 🚀 Quick Start
 
@@ -174,6 +227,8 @@ go test -v ./...
 
 You should see a Chromium window pop up briefly as the tests run!
 
+---
+
 ## 🎨 Desktop App Features
 
 ### Cyberpunk UI Theme
@@ -216,25 +271,54 @@ You should see a Chromium window pop up briefly as the tests run!
 | ERROR | Red | ❌ | Errors |
 | COMPLETE | Green | ✅ | Task completion |
 
-### Example Commands
+---
 
-Try these in the chat interface:
+## 🐳 Docker Deployment (Web Version)
 
-```
-Navigate to google.com
+Kortex can also run as a **web server** in a Docker container, making it accessible via WebSocket without any desktop setup.
+
+### Prerequisites
+
+1. **[Docker](https://www.docker.com/get-started)** installed
+2. **Google Gemini API Key** from [Google AI Studio](https://aistudio.google.com/app/apikey)
+
+### Building the Docker Image
+
+```bash
+docker build -t kortex-web .
 ```
 
-```
-Highlight the search bar with message "I will type here"
+### Running the Container
+
+**Basic usage:**
+```bash
+docker run -p 8080:8080 \
+  -e GOOGLE_API_KEY=your-api-key-here \
+  -e HEADLESS=true \
+  kortex-web
 ```
 
-```
-Type "AI news" into the search bar
+**With persistent database:**
+```bash
+docker run -p 8080:8080 \
+  -e GOOGLE_API_KEY=your-api-key-here \
+  -e HEADLESS=true \
+  -v $(pwd)/data:/app/data \
+  kortex-web
 ```
 
+### Connecting to the WebSocket
+
+**Endpoint:** `ws://localhost:8080/ws/chat`
+
+**Message format:**
+```json
+{
+  "goal": "Navigate to google.com and search for AI news"
+}
 ```
-Click the search button
-```
+
+---
 
 ## 📚 Core Components
 
@@ -275,18 +359,7 @@ The Browser Adapter is Kortex's primary way of interacting with the world. Imple
 *   **Domain Models**: `Session`, `Message`, and `MemoryFragment` define how Kortex thinks and remembers.
 *   **Vector Memory**: Uses cosine similarity search to retrieve relevant context from past interactions, giving Kortex long-term memory.
 
-### The "Interface": Wails Desktop App
-
-**Go Bridge (`app.go`)**:
-- Initializes browser, vector store, and agent on startup
-- Exposes `SendPrompt(prompt string)` method to React
-- Streams logs to frontend via `runtime.EventsEmit`
-- Handles concurrent agent execution with mutex
-
-**React Frontend**:
-- **App.tsx**: Main component with chat and terminal panels
-- **FlightRecorder.tsx**: Real-time log display with color coding
-- **Event Streaming**: Listens to `kortex:log` events from Go backend
+---
 
 ## ❓ Troubleshooting
 
@@ -311,6 +384,8 @@ The Browser Adapter is Kortex's primary way of interacting with the world. Imple
 **Q: "Vector search not supported" error.**
 *   **A**: The current implementation uses a pure Go SQLite driver. For full vector search capabilities, ensure the `sqlite-vec` extension is properly loaded in your environment (or use the provided mock/fallback for basic testing).
 
+---
+
 ## 🤝 Contributing
 
 This project follows the Hexagonal Architecture pattern. When adding features:
@@ -320,9 +395,19 @@ This project follows the Hexagonal Architecture pattern. When adding features:
 3. Update the Wails bridge in `app.go` if needed
 4. Add UI components in `frontend/src/components/`
 
-## 📝 License
+---
 
-MIT License - see LICENSE file for details
+## 📄 License
+
+This project is distributed under the **Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International** license.
+
+**What this means:**
+- ✅ You can view and use this code for learning
+- ✅ You can share this project with attribution
+- ❌ You cannot use this commercially
+- ❌ You cannot create modified versions
+
+See [LICENSE](LICENSE) for the full legal text.
 
 ---
 
